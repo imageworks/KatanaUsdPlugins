@@ -300,7 +300,7 @@ PxrUsdKatanaReadPointInstancer(
         data.GetMotionSampleTimes(positionsAttr, ensureMotion);
     const size_t sampleCount = motionSampleTimes.size();
     std::vector<UsdTimeCode> sampleTimes(sampleCount);
-    std::transform(motionSampleTimes.begin(), motionSampleTimes.end(), 
+    std::transform(motionSampleTimes.begin(), motionSampleTimes.end(),
                    sampleTimes.begin(), [currentTime](double motionSampleTime){
                         return UsdTimeCode(currentTime + motionSampleTime);});
 
@@ -414,7 +414,7 @@ PxrUsdKatanaReadPointInstancer(
                    prim != data.GetUsdInArgs()->GetRootPrim())
             {
                 UsdRelationship materialBindingsRel =
-                        UsdShadeMaterial::GetBindingRel(prim);
+                        UsdShadeMaterialBindingAPI(prim).GetDirectBindingRel();
                 SdfPathVector materialPaths;
                 bool hasMaterialBindings = (materialBindingsRel and
                         materialBindingsRel.GetForwardedTargets(

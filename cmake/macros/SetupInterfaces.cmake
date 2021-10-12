@@ -30,7 +30,7 @@ function(add_boost_interface)
         set(Boost_NAMESPACE Fnboost)
         set(Boost_USE_STATIC_LIBS OFF)
     endif()
-    find_package(Boost COMPONENTS filesystem python thread system regex REQUIRED)
+    find_package(Boost COMPONENTS filesystem python thread system regex date_time REQUIRED)
 endfunction(add_boost_interface) #add_python_interface
 
 
@@ -66,6 +66,10 @@ function(add_python_interface)
                 INTERFACE_INCLUDE_DIRECTORIES "${Python_INCLUDE_DIRS}"
                 INTERFACE_LINK_LIBRARIES "${Python_LIBRARIES}"
         )
+
+        message("XXXXXXXX ${Python_INCLUDE_DIRS}")
+        message("XXXXXXXX ${Python_LIBRARIES}")
+
     elseif(DEFINED Python_ROOT_DIR)
         find_package(Python COMPONENTS Interpreter Development REQUIRED)
         if(Python_INCLUDE_DIRS AND Python_LIBRARIES AND Python_EXECUTABLE)

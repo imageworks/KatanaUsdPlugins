@@ -60,7 +60,7 @@
 
 #include "pxr/usd/sdf/path.h"
 #include "pxr/usd/usd/collectionAPI.h"
-#include "pxr/usd/usd/prim.h" 
+#include "pxr/usd/usd/prim.h"
 #include "pxr/usd/usd/modelAPI.h"
 #include "pxr/usd/usd/stage.h"
 
@@ -92,9 +92,9 @@ _GetMaterialAssignAttrFromPath(
 {
     SdfPath targetPath = inputTargetPath;
     UsdPrim targetPrim = data.GetUsdInArgs()->GetStage()->GetPrimAtPath(targetPath);
-    // If the target is inside a master, then it needs to be re-targeted 
+    // If the target is inside a master, then it needs to be re-targeted
     // to the instance.
-    // 
+    //
     // XXX remove this special awareness once GetMasterWithContext is
     //     is available as the provided prim will automatically
     //     retarget (or provide enough context to retarget without
@@ -103,9 +103,9 @@ _GetMaterialAssignAttrFromPath(
         if (!data.GetInstancePath().IsEmpty() &&
             !data.GetMasterPath().IsEmpty()) {
 
-            // Check if the source and the target of the relationship 
+            // Check if the source and the target of the relationship
             // belong to the same master.
-            // If they do, we have the context necessary to do the 
+            // If they do, we have the context necessary to do the
             // re-mapping.
             if (data.GetMasterPath().GetCommonPrefix(targetPath).
                     GetPathElementCount() > 0) {
@@ -113,9 +113,9 @@ _GetMaterialAssignAttrFromPath(
                     targetPath.ReplacePrefix(targetPath.GetPrefixes()[0],
                         SdfPath::ReflexiveRelativePath()));
             } else {
-                // Warn saying the target of relationship isn't within 
+                // Warn saying the target of relationship isn't within
                 // the same master as the source.
-                FnLogWarn("Target path " << errorContextPath.GetString() 
+                FnLogWarn("Target path " << errorContextPath.GetString()
                     << " isn't within the master " << data.GetMasterPath());
                 return FnKat::Attribute();
             }
@@ -129,11 +129,11 @@ _GetMaterialAssignAttrFromPath(
             // This case can occur when expanding pointinstancers as
             // the sources are made via execution of PxrUsdIn again
             // at the sub-trees.
-            
-            
-            // Warn saying target of relationship is in a master, 
+
+
+            // Warn saying target of relationship is in a master,
             // but the associated instance path is unknown!
-            // FnLogWarn("Target path " << prim.GetPath().GetString() 
+            // FnLogWarn("Target path " << prim.GetPath().GetString()
             //         << " is within a master, but the associated "
             //         "instancePath is unknown.");
             // return FnKat::Attribute();
@@ -141,14 +141,14 @@ _GetMaterialAssignAttrFromPath(
     }
 
     // Convert the target path to the equivalent katana location.
-    // XXX: Materials may have an atypical USD->Katana 
+    // XXX: Materials may have an atypical USD->Katana
     // path mapping
     std::string location =
         PxrUsdKatanaUtils::ConvertUsdMaterialPathToKatLocation(targetPath, data);
 
-    static const bool allowCustomScopes = 
+    static const bool allowCustomScopes =
         TfGetEnvSetting(USD_KATANA_ALLOW_CUSTOM_MATERIAL_SCOPES);
-        
+
     // XXX Materials containing only display terminals are causing issues
     //     with katana material manipulation workflows.
     //     For now: exclude any material assign which doesn't include
@@ -172,7 +172,7 @@ _GetMaterialAssignAttr(
         return FnKat::Attribute();
     }
 
-    UsdRelationship usdRel = UsdShadeMaterial::GetBindingRel(prim);
+    UsdRelationship usdRel = UsdShadeMaterialBindingAPI(prim).GetDirectBindingRel();
     if (usdRel) {
         // USD shading binding
         SdfPathVector targetPaths;
@@ -203,7 +203,7 @@ _GetCollectionBasedMaterialAssignments(
     const auto & purposes = data.GetUsdInArgs()->GetMaterialBindingPurposes();
     if (purposes.empty())
     {
-        return FnKat::Attribute();    
+        return FnKat::Attribute();
     }
 
 
@@ -237,7 +237,7 @@ _GetCollectionBasedMaterialAssignments(
 
 static bool
 _GatherRibAttributes(
-        const UsdPrim &prim, 
+        const UsdPrim &prim,
         double currentTime,
         FnKat::GroupBuilder& attrsBuilder)
 {
@@ -246,14 +246,14 @@ _GatherRibAttributes(
     // USD SHADING STYLE ATTRIBUTES
     if (prim) {
         UsdRiStatementsAPI riStatements(prim);
-        const std::vector<UsdProperty> props = 
+        const std::vector<UsdProperty> props =
             riStatements.GetRiAttributes();
         std::string attrName;
         TF_FOR_ALL(propItr, props) {
             UsdProperty prop = *propItr;
             if (!prop) continue;
 
-            std::string nameSpace = 
+            std::string nameSpace =
                 riStatements.GetRiAttributeNameSpace(prop).GetString();
             nameSpace = TfStringReplace(nameSpace, ":", ".") + ".";
 
@@ -274,7 +274,7 @@ _GatherRibAttributes(
             VtValue vtValue;
             UsdAttribute usdAttr = prim.GetAttribute(prop.GetName());
             if (usdAttr) {
-                if (!usdAttr.Get(&vtValue, currentTime)) 
+                if (!usdAttr.Get(&vtValue, currentTime))
                     continue;
                 attrsBuilder.set(attrName, PxrUsdKatanaUtils::ConvertVtValueToKatAttr(vtValue,
                     asShaderParam) );
@@ -313,7 +313,7 @@ PxrUsdKatanaReadPrimPrmanStatements(
     //
     // Add gprim-specific prmanStatements.
     //
-    
+
     if (UsdGeomGprim gprim = UsdGeomGprim(prim))
     {
         bool doubleSided = false;
@@ -400,20 +400,20 @@ _BuildScopedCoordinateSystems(
 
         foundCoordSys = true;
     }
-    
+
     return foundCoordSys;
 }
 
-static 
+static
 void
 _AppendPathToIncludeExcludeStr(
     const SdfPath &path,
     bool isIncludePath,
-    const UsdPrim &prim, 
+    const UsdPrim &prim,
     const TfToken &srcCollectionName,
     std::stringstream &incExcStr)
 {
-    // Skip property paths as properties can't be included in a katana 
+    // Skip property paths as properties can't be included in a katana
     // collection (although they can be included by CEL).
     if (path.IsPropertyPath()) {
         return;
@@ -423,20 +423,20 @@ _AppendPathToIncludeExcludeStr(
         const size_t prefixLength = prim.GetPath().GetString().length();
         std::string relativePath = path.GetString().substr(prefixLength);
 
-        // Follow katana convention for collections the "self" location relative 
-        // path is "/". Absolute paths start with "/root/" relative paths start 
+        // Follow katana convention for collections the "self" location relative
+        // path is "/". Absolute paths start with "/root/" relative paths start
         // without the "/" though.
         if (relativePath == "")
             relativePath = "/";
         // Add the path and all descendants
-        incExcStr << relativePath << " " 
+        incExcStr << relativePath << " "
                   << ((relativePath != "/") ? relativePath : "") << "//* ";
 
     } else {
-        FnLogWarn("Collection " << srcCollectionName  << 
+        FnLogWarn("Collection " << srcCollectionName  <<
                   (isIncludePath ? "includes" : "excludes") << " path "
                   << path.GetString() << " which is not a descendant of the "
-                  "collection-owning prim <" << prim.GetPath().GetString() 
+                  "collection-owning prim <" << prim.GetPath().GetString()
                   << ">");
     }
 }
@@ -450,12 +450,12 @@ std::string _GetKatanaCollectionName(const TfToken &collectionName)
     return pystring::replace(collectionName.GetString(), ":", "__");
 }
 
-static 
+static
 std::string
 _GetKatanaCollectionPath(
-    const SdfPath &collPrimPath, 
+    const SdfPath &collPrimPath,
     const TfToken &collectionName,
-    const UsdPrim &prim, 
+    const UsdPrim &prim,
     const TfToken &srcCollectionName,
     const PxrUsdKatanaUsdInPrivateData& data)
 {
@@ -465,30 +465,30 @@ _GetKatanaCollectionPath(
         const size_t prefixLength = prim.GetPath().GetString().length();
         std::string relativePath = collPrimPath.GetString().substr(prefixLength);
         // follow katana convention for collections
-        // the "self" location relative path is "/". 
+        // the "self" location relative path is "/".
         // Absolute paths start with "/root/"
         // relative paths start without the "/" though.
         if (relativePath == "")
             relativePath = "/";
 
-        return TfStringPrintf("(%s/$%s)", relativePath.c_str(), 
+        return TfStringPrintf("(%s/$%s)", relativePath.c_str(),
                               katanaCollectionName.c_str());
     } else {
-        FnLogWarn("Collection " << srcCollectionName   
-            << " includes collection " << collPrimPath << ".collection:" << 
+        FnLogWarn("Collection " << srcCollectionName
+            << " includes collection " << collPrimPath << ".collection:" <<
             collectionName << " which is not a descendant of the collection-"
             "owning prim <" << prim.GetPath().GetString() << ">");
 
-        // If the collection is not a descendant, add the full 
-        // katana location of the collection. 
+        // If the collection is not a descendant, add the full
+        // katana location of the collection.
         // This won't cause the collection to be included, but
-        // does not cause any errors either and might give us 
+        // does not cause any errors either and might give us
         // a way to roundtrip the include back to USD.
 
-        const std::string katPrimPath = 
+        const std::string katPrimPath =
                 PxrUsdKatanaUtils::ConvertUsdPathToKatLocation(
                     collPrimPath, data);
-        return TfStringPrintf("(%s/$%s)", katPrimPath.c_str(), 
+        return TfStringPrintf("(%s/$%s)", katPrimPath.c_str(),
                               katanaCollectionName.c_str());
     }
 }
@@ -499,20 +499,20 @@ _BuildCollections(
     const PxrUsdKatanaUsdInPrivateData& data,
     FnKat::GroupBuilder& collectionsBuilder)
 {
-    std::vector<UsdCollectionAPI> collections = 
+    std::vector<UsdCollectionAPI> collections =
         UsdCollectionAPI::GetAllCollections(prim);
 
     const size_t prefixLength = prim.GetPath().GetString().length();
 
     for (const UsdCollectionAPI &collection : collections) {
-        TfToken expansionRule; 
+        TfToken expansionRule;
         collection.GetExpansionRuleAttr().Get(&expansionRule);
 
         if (expansionRule != UsdTokens->explicitOnly) {
             UsdRelationship includesRel = collection.GetIncludesRel();
             UsdRelationship excludesRel = collection.GetExcludesRel();
-            
-            SdfPathVector includes, excludes; 
+
+            SdfPathVector includes, excludes;
             includesRel.GetTargets(&includes);
             excludesRel.GetTargets(&excludes);
 
@@ -529,11 +529,11 @@ _BuildCollections(
                 TfToken collectionName;
                 if (UsdCollectionAPI::IsCollectionAPIPath(p, &collectionName)) {
                     SdfPath collPrimPath= p.GetPrimPath();
-                    std::string katCollStr = _GetKatanaCollectionPath(collPrimPath, 
+                    std::string katCollStr = _GetKatanaCollectionPath(collPrimPath,
                         collectionName, prim, collection.GetName(), data);
                     collectionBuilder.push_back(katCollStr);
                 } else {
-                    _AppendPathToIncludeExcludeStr(p, /*isIncludePath */ true, 
+                    _AppendPathToIncludeExcludeStr(p, /*isIncludePath */ true,
                             prim, collection.GetName(), incExcStr);
                 }
             }
@@ -549,7 +549,7 @@ _BuildCollections(
             }
             incExcStr << ")";
 
-            // Add the string that encodes the includes and excludes if it's 
+            // Add the string that encodes the includes and excludes if it's
             // not empty.
             if (incExcStr.str() != "(())") {
                 collectionBuilder.push_back(incExcStr.str());
@@ -566,23 +566,23 @@ _BuildCollections(
             // Bake the collection as a flat list of member paths.
             const auto &mquery = collection.ComputeMembershipQuery();
             SdfPathSet includedPaths = UsdCollectionAPI::ComputeIncludedPaths(
-                    mquery, prim.GetStage()); 
+                    mquery, prim.GetStage());
             FnKat::StringBuilder collectionBuilder;
             for (const SdfPath &p : includedPaths) {
                 if (p.HasPrefix(prim.GetPath())) {
                     std::string relativePath = p.GetString().substr(prefixLength);
                     // follow katana convention for collections
-                    // the "self" location relative path is "/". 
+                    // the "self" location relative path is "/".
                     // Absolute paths start with "/root/"
                     // relative paths start without the "/" though.
                     if (relativePath == "")
                         relativePath = "/";
                     collectionBuilder.push_back(relativePath);
-                        
+
                 } else {
                     FnLogWarn("Collection " << collection.GetName()  << " includes "
                         "path " << p.GetString() << " which is not a descendant "
-                        "of the collection-owning prim <" 
+                        "of the collection-owning prim <"
                         << prim.GetPath().GetString() << ">");
                 }
             }
@@ -607,30 +607,30 @@ _AddExtraAttributesOrNamespaces(
         const PxrUsdKatanaUsdInPrivateData& data,
         PxrUsdKatanaAttrMap& attrs)
 {
-    const std::string& rootLocation = 
+    const std::string& rootLocation =
         data.GetUsdInArgs()->GetRootLocationPath();
     const double currentTime = data.GetCurrentTime();
 
     const PxrUsdKatanaUsdInArgs::StringListMap& extraAttributesOrNamespaces =
         data.GetUsdInArgs()->GetExtraAttributesOrNamespaces();
 
-    PxrUsdKatanaUsdInArgs::StringListMap::const_iterator I = 
+    PxrUsdKatanaUsdInArgs::StringListMap::const_iterator I =
         extraAttributesOrNamespaces.begin();
     for (; I != extraAttributesOrNamespaces.end(); ++I)
     {
         const std::string& name = (*I).first;
         const std::vector<std::string>& names = (*I).second;
-        
+
         FnKat::GroupBuilder gb;
 
         for (std::vector<std::string>::const_iterator I = names.begin(),
                 E = names.end(); I != E; ++I)
         {
             const std::string& propOrNamespace = (*I);
-            
+
             std::vector<UsdAttribute> usdAttrs;
             std::vector<UsdRelationship> usdRelationships;
-            
+
             if (UsdAttribute directAttribute =
                     prim.GetAttribute(TfToken(propOrNamespace)))
             {
@@ -643,14 +643,14 @@ _AddExtraAttributesOrNamespaces(
             }
             else
             {
-                std::vector<UsdProperty> props = 
+                std::vector<UsdProperty> props =
                         prim.GetPropertiesInNamespace(propOrNamespace);
-                
+
                 for (std::vector<UsdProperty>::const_iterator I =
                         props.begin(), E = props.end(); I != E; ++I)
                 {
                     const UsdProperty & prop = (*I);
-                    
+
                     if (UsdAttribute attr = prop.As<UsdAttribute>())
                     {
                         usdAttrs.push_back(attr);
@@ -662,68 +662,68 @@ _AddExtraAttributesOrNamespaces(
                     }
                 }
             }
-            
+
             for (std::vector<UsdAttribute>::iterator I = usdAttrs.begin(),
                     E = usdAttrs.end(); I != E; ++I)
             {
                 UsdAttribute & usdAttr = (*I);
-                
+
                 VtValue vtValue;
                 if (!usdAttr.Get(&vtValue, currentTime))
                 {
                     continue;
                 }
-                
-                FnKat::Attribute attr = 
+
+                FnKat::Attribute attr =
                     PxrUsdKatanaUtils::ConvertVtValueToKatAttr(vtValue);
-                
+
                 if (!attr.isValid())
                 {
                     continue;
                 }
-                
+
                 gb.set(pystring::replace(
                     usdAttr.GetName().GetString(), ":", "."), attr);
             }
-            
+
             for (std::vector<UsdRelationship>::iterator I =
                     usdRelationships.begin(), E = usdRelationships.end();
                             I != E; ++I)
             {
                 UsdRelationship & usdRelationship = (*I);
-                
-                FnKat::StringAttribute attr = 
+
+                FnKat::StringAttribute attr =
                     PxrUsdKatanaUtils::ConvertRelTargetsToKatAttr(usdRelationship);
                 if (!attr.isValid())
                 {
                     continue;
                 }
-                
+
                 // Further prefix with the PxrUsdIn root scenegraph
                 // location in order to make it a valid katana path.
                 // XXX, move this into PxrUsdKatanaUtils::ConvertRelTargetsToKatAttr
                 // for future implementations.
-                
+
                 FnKat::StringAttribute::array_type values =
                         attr.getNearestSample(0.0f);
-                
+
                 std::vector<std::string> prefixedValues;
                 prefixedValues.reserve(values.size());
-                
+
                 for (size_t i = 0; i < values.size(); ++i)
                 {
                     std::ostringstream buffer;
                     buffer << rootLocation;
-                    
+
                     if (values[i][0] && values[i][0] != '/')
                     {
                         buffer << '/';
                     }
                     buffer << values[i];
-                    
+
                     prefixedValues.push_back(buffer.str());
                 }
-                
+
                 gb.set(pystring::replace(
                         usdRelationship.GetName().GetString(),
                                 ":", "."), FnKat::StringAttribute(
@@ -757,13 +757,13 @@ _AddCustomProperties(
         {
             continue;
         }
-        
+
         VtValue vtValue;
         if (!usdAttr.Get(&vtValue, currentTime))
         {
             continue;
         }
-        
+
         FnKat::Attribute attr =
             PxrUsdKatanaUtils::ConvertVtValueToKatAttr(vtValue);
 
@@ -771,7 +771,7 @@ _AddCustomProperties(
         {
             continue;
         }
-        
+
         customBuilder.set(pystring::replace(
             usdAttr.GetName().GetString(), ":", "."), attr);
 
@@ -940,7 +940,7 @@ PxrUsdKatanaReadPrim(
     //
 
     FnKat::GroupBuilder statementsBuilder;
-    PxrUsdKatanaReadPrimPrmanStatements(prim, data.GetCurrentTime(), 
+    PxrUsdKatanaReadPrimPrmanStatements(prim, data.GetCurrentTime(),
         statementsBuilder, prmanOutputTarget);
     FnKat::GroupAttribute statements = statementsBuilder.build();
     if (statements.getNumberOfChildren() > 0)
@@ -999,7 +999,7 @@ PxrUsdKatanaReadPrim(
         {
             FnKat::GroupBuilder arbBuilder;
             arbBuilder.update(primvarGroup);
-            
+
             FnKat::GroupAttribute arbGroup = arbBuilder.build();
             if (arbGroup.getNumberOfChildren() > 0)
             {
@@ -1042,7 +1042,7 @@ PxrUsdKatanaReadPrim(
 
     _AddExtraAttributesOrNamespaces(prim, data, attrs);
 
-    // 
+    //
     // Store the applied apiSchemas metadata a either a list of
     // strings or a group of int attributes whose name will be
     // the name of the schema (or schema.instanceName) and whose
@@ -1053,24 +1053,24 @@ PxrUsdKatanaReadPrim(
     //
     TfTokenVector appliedSchemaTokens = prim.GetAppliedSchemas();
     if (!appliedSchemaTokens.empty()){
-        static const bool apiSchemasAsGroupAttr = 
+        static const bool apiSchemasAsGroupAttr =
                 TfGetEnvSetting(USD_KATANA_API_SCHEMAS_AS_GROUP_ATTR);
         if (apiSchemasAsGroupAttr){
             for (const TfToken& schema : appliedSchemaTokens){
-                std::vector<std::string> tokenizedSchema = 
+                std::vector<std::string> tokenizedSchema =
                     TfStringTokenize(schema.GetString(), ":");
-                if (tokenizedSchema.size() == 1){                
+                if (tokenizedSchema.size() == 1){
                     // single apply schemas
-                    std::string attrName = 
+                    std::string attrName =
                         TfStringPrintf("info.usd.apiSchemas.%s",
                                        tokenizedSchema[0].c_str());
                     attrs.set(attrName, FnKat::IntAttribute(1));
-                } 
+                }
                 else if (tokenizedSchema.size() > 1){
                     // multi apply schemas
                     std::string instanceName = TfStringJoin(
                         tokenizedSchema.begin() + 1, tokenizedSchema.end());
-                    std::string attrName = 
+                    std::string attrName =
                         TfStringPrintf("info.usd.apiSchemas.%s.%s",
                                        tokenizedSchema[0].c_str(),
                                        instanceName.c_str());
@@ -1084,15 +1084,15 @@ PxrUsdKatanaReadPrim(
             }
         } else{
             std::vector<std::string> appliedSchemas(appliedSchemaTokens.size());
-            std::transform(appliedSchemaTokens.begin(), appliedSchemaTokens.end(), 
-                           appliedSchemas.begin(), [](const TfToken& token){ 
+            std::transform(appliedSchemaTokens.begin(), appliedSchemaTokens.end(),
+                           appliedSchemas.begin(), [](const TfToken& token){
                 return token.GetString();
             });
             attrs.set("info.usd.apiSchemas", FnKat::StringAttribute(appliedSchemas));
         }
     }
 
-    // 
+    //
     // Store the composed inherits metadata as a group attribute
     //
     SdfPathVector inheritPaths = prim.GetInherits().GetAllDirectInherits();
